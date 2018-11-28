@@ -1,0 +1,27 @@
+{
+  "name": "mobileClient",
+  "interface": "reagent6",
+  "envRoots": {
+    "dev": "env/dev",
+    "prod": "env/prod"
+  },
+  "modules": [
+    "aws-amplify",
+    "aws-amplify-react-native",
+    "./aws-exports.js"
+  ],
+  "imageDirs": [
+    "images"
+  ],
+  "platforms": {
+    "ios": {
+      "host": "localhost",
+      "modules": []
+    },
+    "android": {
+      "host": "localhost",
+      "modules": []
+    }
+  },
+  "autoRequire": false
+}
