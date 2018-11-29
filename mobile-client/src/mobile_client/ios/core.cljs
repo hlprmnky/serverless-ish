@@ -12,13 +12,16 @@
 (def view (r/adapt-react-class (.-View ReactNative)))
 (def image (r/adapt-react-class (.-Image ReactNative)))
 (def touchable-highlight (r/adapt-react-class (.-TouchableHighlight ReactNative)))
+(def text-input (r/adapt-react-class (.-TextInput ReactNative)))
 
 (def Amplify (js/require "aws-amplify"))
 (def Auth (gobj/get Amplify "Auth"))
+(def Analytics (gobj/get Amplify "Analytics"))
 (def aws-exports (js/require "./aws-exports.js"))
 (def awsconfig (gobj/get aws-exports "default"))
 (.configure Auth awsconfig)
-()
+(.configure Analytics awsconfig)
+
 (def logo-img (js/require "./images/cljs.png"))
 
 #_(let [desired-user (clj->js {:username "test-user1"
@@ -30,41 +33,75 @@
       (.catch #(.log js/console %))))
 (def current-user (atom {:user nil}))
 
-(-> (.confirmSignUp Auth "test-user1" "023929")
-    (.then #((swap! current-user assoc :user %)
-             (js/console.log %)))
-    (.catch #(js/console.log %)))
+(comment
+  (-> (.confirmSignUp Auth "test-user1" "023929")
+      (.then #((swap! current-user assoc :user %)
+               (js/console.log %)))
+      (.catch #(js/console.log %)))
 
-(-> (.signIn Auth "test-user1" "hardToGuess1!")
-    (.then #((swap! current-user assoc :user %)
-             (js/console.log %)))
-    (.catch #(js/console.log "Error in signIn:" %)))
+  (-> (.currentSession Auth)
+      (.then #(js/console.log %))
+      (.catch #(js/console.log "Error in currentSession:" %)))
 
-(-> (.currentSession Auth)
-    (.then #(js/console.log %))
-    (.catch #(js/console.log "Error in currentSession:" %)))
+  (-> (.currentAuthenticatedUser Auth)
+      (.then #(js/console.log %))
+      (.catch #(js/console.log "Error in currentAuthenticatedUser:" %)))
 
-(-> (.currentAuthenticatedUser Auth)
-    (.then #(js/console.log %))
-    (.catch #(js/console.log "Error in currentAuthenticatedUser:" %)))
-
-(-> (.signOut Auth)
-    (.then #(js/console.log "User was signed out."))
-    (.catch #(js/console.log "Error in signOut:" %)))
+  )
 
 (defn alert [title]
       (.alert (.-Alert ReactNative) title))
 
 (defn app-root []
-  (let [greeting (subscribe [:get-greeting])]
+  (let [greeting (subscribe [:get-greeting])
+        username (subscribe [:get-username])
+        password (subscribe [:get-password])
+        user     (subscribe [:get-user])]
     (fn []
       [view {:style {:flex-direction "column" :margin 40 :align-items "center"}}
-       [text {:style {:font-size 30 :font-weight "100" :margin-bottom 20 :text-align "center"}} @greeting]
-       [image {:source logo-img
-               :style  {:width 80 :height 80 :margin-bottom 30}}]
-       [touchable-highlight {:style {:background-color "#999" :padding 10 :border-radius 5}
-                             :on-press #(alert "HELLO!")}
-        [text {:style {:color "white" :text-align "center" :font-weight "bold"}} "press me"]]])))
+       [text {:style {:font-size 18 :font-weight "100" :margin-bottom 20 :text-align "center"}}
+        (str "User: " (if-not @user "None!" (.-username @user)))]
+       [view {:style {:flex-direction "row" :margin 10 :align-items "center"}}
+        [text {:style {:font-size 18 :font-weight "100" :margin-bottom 0 :text-align "right"}} "Username:"]
+        [text-input {:default-value     "user name"
+                     :id                "username"
+                     :auto-focus        true
+                     :on-change-text    #(dispatch [:set-username %])
+                     :style             {:flex      1
+                                         :fontSize  18
+                                         :textAlign "center"
+                                         :margin   4
+                                         :background-color "#bbb"}}]]
+       [view {:style {:flex-direction "row" :margin 10 :align-items "center"}}
+        [text {:style {:font-size 18 :font-weight "100" :margin-bottom 0 :text-align "right"}} "Password:"]
+        [text-input {:default-value     "password"
+                     :id                "password"
+                     :auto-focus        true
+                     :on-change-text    #(dispatch [:set-password %])
+                     :style             {:flex      1
+                                         :fontSize  18
+                                         :textAlign "center"
+                                         :margin   4
+                                         :background-color "#bbb"}}]]
+       [view {:style {:flex-direction "row" :margin 10 :align-items "center"}}
+        [touchable-highlight {:style {:background-color "#999" :margin 10 :padding 10 :border-radius 5}
+                              :on-press #(-> (.signIn Auth @username @password)
+                                             (.then (fn [user]
+                                                      (.record Analytics (clj->js {:name "userSignedIn"
+                                                                                  :attributes
+                                                                                  {:username (.-username user)}}))
+                                                      (dispatch [:set-authenticated-user user])))
+                                             (.catch (fn [err]
+                                                       (js/console.log "Error in signIn:" err))))}
+         [text {:style {:color "white" :text-align "center" :font-weight "bold"}} "Log In"]]
+        [touchable-highlight {:style {:background-color "#999" :margin 10 :padding 10 :border-radius 5}
+                              :on-press #(-> (.signOut Auth)
+                                             (.then (js/console.log "User was signed out.")
+                                                    (.record Analytics (clj->js {:name "userSignedOut"}))
+                                                    (dispatch [:set-authenticated-user nil]))
+                                             (.catch (fn [e] (js/console.log "Error in signOut:" e))))}
+         [text {:style {:color "white" :text-align "center" :font-weight "bold"}} "Log Out"]]]
+       [view {:style {:flex-direction "row" :margin 10 :align-items "center"}}]])))
 
 (defn init []
       (dispatch-sync [:initialize-db])

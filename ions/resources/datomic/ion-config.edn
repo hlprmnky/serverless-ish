@@ -1,0 +1,23 @@
+{:allow [serverless-ish.core/all-channel-names
+         serverless-ish.core/all-user-handles
+         serverless-ish.core/create-channel!
+         serverless-ish.core/channel-id-by-name
+         serverless-ish.core/update-user!
+         serverless-ish.core/add-message-to-channel!
+         serverless-ish.ions/get-channels
+         serverless-ish.ions/get-users
+         serverless-ish.ions/create-channel
+         serverless-ish.ions/send-message]
+ :lambdas {:all-channel-names
+           {:fn serverless-ish.ions/get-channels
+            :description "Lists channels"}
+           :all-user-handles
+           {:fn serverless-ish.ions/get-users
+            :description "Lists users"}
+           :create-channel
+           {:fn serverless-ish.ions/create-channel
+            :description "Creates a new channel"}
+           :send-message
+           {:fn serverless-ish.ions/send-message
+            :descriptions "Publishes a message to a channel"}}
+ :app-name "chat-demo"}

@@ -3,4 +3,4 @@
 .amplifyrc
 amplify/
 .graphqlconfig.yml
-./src
+./src/

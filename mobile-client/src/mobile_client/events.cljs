@@ -33,3 +33,21 @@
  validate-spec
  (fn [db [_ value]]
    (assoc db :greeting value)))
+
+(reg-event-db
+ :set-authenticated-user
+ validate-spec
+ (fn [db [_ value]]
+   (assoc db :user value)))
+
+(reg-event-db
+ :set-username
+ validate-spec
+ (fn [db [_ value]]
+   (assoc db :username value)))
+
+(reg-event-db
+ :set-password
+ validate-spec
+ (fn [db [_ value]]
+   (assoc db :password value)))

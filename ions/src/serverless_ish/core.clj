@@ -64,19 +64,6 @@
                   db user-email)]
     (some? (first user))))
 
-(defn update-user!
-  "Changes handle and/or profile img for user identified by email"
-  [{:keys [email handle profile-img :as user]}]
-  (let [conn (d/connect (get-client {:db-name "chat-db"}))
-        db   (d/db conn)
-        new-user (remove #(nil? (val %)) user)
-        new-user (remove #(= :email (key %)) user)
-        tx-data (zipmap (map #(keyword "user" (name %)) (keys new-user))
-                        (vals new-user))]
-    (if-not (user-exists? email)
-      {:error (str "Attempt to update user" email "whom does not exist!")}
-      (d/transact))))
-
 (defn create-user!
   "Makes a new user in the db. Email and handle are required keys"
   [{:keys [email handle profile-img] :as user}]
@@ -116,12 +103,19 @@
            [?e :message/text      ?text]]
          db channel-id)))
 
+(defn add-message-to-channel!
+  [sender channel text]
+  (let [conn (d/connect (get-client) {:db-name "chat-db"})]
+    (d/transact conn {:tx-data [{:message/channel channel
+                                 :message/sender  sender
+                                 :message/text    text}]})))
+
 
 (comment
   (all-channel-names)
   (create-channel! "test-channel")
   (channel-id-by-name "test-channel")
-  (messages-in-channel (first (channel-id-by-name "test-channel")))
+  (messages-in-channel (str (first (channel-id-by-name "test-channel"))))
   (all-user-handles)
   (let [conn (d/connect (get-client) {:db-name "chat-db"})
         db   (d/db conn)]
@@ -129,6 +123,13 @@
         (d/transact {:tx-data [[:db/add [:user/email "alice@example.com"]
                                  :user/handle "GoAskAlice"]]})
         :tempids))
+  (d/q '[:find ?timestamp ?text
+         :in $
+         :where
+         [?e :message/id _]
+         [?e :message/timestamp ?timestamp]
+         [?e :message/text      ?text]]
+       (d/db conn))
   (create-user! {:email "alice@example.com"
                  :handle "GoAskAlice"})
   (create-user! {:email "bob@example.com"
